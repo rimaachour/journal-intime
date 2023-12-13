@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classy Journal</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f5f5f5; 
+            font-family: 'Georgia', serif;
+            color: #333; 
+        }
+
+        .container {
+            background-color: #fff; 
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-top: 50px;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #555; 
+            text-align: center;
+        }
+
+        .entry {
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 1px solid #ddd; 
+            border-radius: 10px;
+            background-color: #f9f9f9; 
+        }
+
+        .entry textarea {
+            width: 100%;
+            resize: none;
+            border: none;
+            background-color: transparent;
+            font-size: 16px;
+            color: #333; 
+        }
+
+        .entry button {
+            margin-top: 10px;
+            background-color: #555; 
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .entry button:hover {
+            background-color: #333; 
+        }
+
+        .note-container {
+            margin-top: 20px;
+        }
+
+        .note {
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 1px solid #ddd; 
+            border-radius: 10px;
+            background-color: #f9f9f9; 
+            display: none; 
+        }
+
+        .note p {
+            margin: 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .view-button {
+    margin-top: 10px;
+    background-color: #555; 
+    color: #fff;
+    border: none;
+    padding: 5px 10px; 
+    border-radius: 3px; 
+    cursor: pointer;
+}
+
+
+        .view-button:hover {
+            background-color: #333; 
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>My Classy Journal</h1>
+
+    <div class="entry">
+        <form id="addNoteForm">
+            <textarea id="noteInput" name="note_content" placeholder="Write your thoughts here..."></textarea>
+            <button type="submit">Add Entry</button>
+        </form>
+    </div>
+    
+
+    <!-- Note container to hold dynamically created notes -->
+    <div class="note-container" id="noteContainer"></div>
+</div>
+
+<!-- Bootstrap JS and dependencies (jQuery and Popper.js) -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1/crypto-js.js"></script> -->
+
+
+
+<script>
+       function cesar(str, amount) {
+        if (amount < 0) {
+            return cesar(str, amount + 26);
+        }
+
+        var res = '';
+        for (var i = 0; i < str.length; i++) {
+            var c = str[i];
+            if (c.match(/[a-z]/i)) {
+                var code = str.charCodeAt(i);
+                if ((code >= 65) && (code <= 90))
+                    c = String.fromCharCode(((code - 65 + amount) % 26) + 65);
+                else if ((code >= 97) && (code <= 122))
+                    c = String.fromCharCode(((code - 97 + amount) % 26) + 97);
+            }
+            res += c;
+        }
+        return res;
+    }
+
+    function encryptCesar(data, shiftAmount) {
+        return cesar(data, shiftAmount);
+    }
+
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var secretKey = 3 ;
+        var form = document.getElementById('addNoteForm');
+        var noteContainer = document.getElementById('noteContainer');
+
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            var noteInput = document.getElementById("noteInput").value.trim();
+            if (noteInput !== "") {
+
+
+                var encryptedNote = encryptCesar(noteInput, secretKey);
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/add-note', true);
+                xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                xhr.send('note_content=' + encodeURIComponent(encryptedNote));
+
+                xhr.onload = function () {
+                    if (xhr.status === 200) {
+                        var insertedNoteId = xhr.responseText;
+                        createNoteElement(encryptedNote,insertedNoteId);
+                    } else {
+                        console.error("Error inserting note");
+                    }
+                };
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Oops...',
+                    text: 'The note cannot be empty!',
+                });
+            }
+        });
+
+        function createNoteElement(noteContent,noteId) {
+            var secretKey = 3; 
+
+    // Déchiffrement de la note
+    var decryptedNote = decryptCesar(noteContent, secretKey);
+
+            var newNote = document.createElement("div");
+            newNote.className = "note";
+            newNote.id = "note_" + noteId;
+            
+            var noteContentElem = document.createElement("p");
+            noteContentElem.innerText = noteContent;
+
+            var viewButton = document.createElement("button");
+            viewButton.innerHTML = '<i class="fas fa-eye"></i>';
+            viewButton.className = "view-button";
+            viewButton.onclick = function () {
+                viewNoteContent(noteContentElem);
+            };
+
+            var deleteButton = document.createElement("button");
+            deleteButton.innerHTML = '<i class="fas fa-trash"></i>';
+            deleteButton.className = "view-button";
+            deleteButton.setAttribute("data-note-id", noteId);
+
+            deleteButton.onclick = function () {
+                deleteNoteFromDB(noteId);
+            };
+
+            var modifyButton = document.createElement("button");
+modifyButton.innerHTML = '<i class="fas fa-pencil-alt"></i>';
+modifyButton.className = "view-button";
+modifyButton.onclick = function () {
+    modifyNoteContent(noteContentElem, noteId);
+};
+
+            newNote.appendChild(noteContentElem);
+            newNote.appendChild(viewButton);
+            newNote.appendChild(deleteButton);
+            newNote.appendChild(modifyButton);
+
+            noteContainer.appendChild(newNote);
+            newNote.style.display = "block";
+        }
+
+        function modifyNoteContent(content, noteId) {
+    content.contentEditable = true;
+    content.focus();
+
+    content.addEventListener('blur', function() {
+        content.contentEditable = false;
+        updateNoteInDB(noteId, content.innerText);
+    });
+}
+function updateNoteInDB(noteId, newContent) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/update-note/' + noteId, true);
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+
+    xhr.onload = function () {
+        if (xhr.status === 200) {
+            console.log("Note updated successfully");
+        } else {
+            console.error("Error updating note");
+        }
+    };
+
+    xhr.send('new_content=' + encodeURIComponent(newContent));
+}
+
+function viewNoteContent(content) {
+    var encryptedContent = content.innerText;
+
+    if (!content.classList.contains("decrypted")) {
+        Swal.fire({
+            title: 'Enter your credentials',
+            html: `
+                <input type="email" id="email" class="swal2-input" placeholder="Email">
+                <input type="password" id="password" class="swal2-input" placeholder="Password">
+            `,
+            focusConfirm: false,
+            preConfirm: () => {
+                return {
+                    email: document.getElementById('email').value,
+                    password: document.getElementById('password').value
+                };
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                var email = result.value.email;
+                var password = result.value.password;
+
+                authenticateUser(email, password, encryptedContent);
+            }
+        });
+    }
+}
+function authenticateUser(email, password) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/login', true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+            if (xhr.status === 200) {
+                getNotes(email, password);
+            } else {
+                var errorMessage = JSON.parse(xhr.responseText).message;
+                alert(errorMessage);
+            }
+        }
+    };
+    var data = JSON.stringify({ email: email, password: password });
+    xhr.send(data);
+}
+
+function getNotes(email, password) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/get-notes', true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+            if (xhr.status === 200) {
+                var notes = JSON.parse(xhr.responseText);
+                displayNotes(notes);
+            } else {
+                var errorMessage = JSON.parse(xhr.responseText).message;
+                alert(errorMessage);
+            }
+        }
+    };
+
+    var data = JSON.stringify({ email: email, password: password });
+    xhr.send(data);
+}
+
+function displayNotes(notes) {
+    // Vérifier s'il y a des notes récupérées
+    if (notes.length > 0) {
+        var lastNote = notes[notes.length - 1]; // Récupérer la dernière note du tableau
+        
+        // Afficher une alerte stylisée avec SweetAlert2
+        Swal.fire({
+            title: 'Votre note est ',
+            text: lastNote,
+            icon: 'success',
+            confirmButtonText: 'OK'
+        });
+    } else {
+        // Si aucun élément n'est récupéré, afficher une alerte pour indiquer qu'aucune note n'a été trouvée
+        Swal.fire({
+            title: 'Aucune note récupérée',
+            text: 'Aucune note n\'a été insérée.',
+            icon: 'info',
+            confirmButtonText: 'OK'
+        });
+    }
+}
+
+
+
+
+
+
+
+
+
+// Fonction pour décrypter avec le chiffrement César
+function decryptCesar(data, shiftAmount) {
+    return cesar(data, -shiftAmount); 
+}
+
+// Fonction de chiffrement César
+function cesar(str, amount) {
+    if (amount < 0) {
+        return cesar(str, amount + 26);
+    }
+    
+
+    var res = '';
+    for (var i = 0; i < str.length; i++) {
+        var c = str[i];
+        if (c.match(/[a-z]/i)) {
+            var code = str.charCodeAt(i);
+            if ((code >= 65) && (code <= 90))
+                c = String.fromCharCode(((code - 65 + amount) % 26) + 65);
+            else if ((code >= 97) && (code <= 122))
+                c = String.fromCharCode(((code - 97 + amount) % 26) + 97);
+        }
+        res += c;
+    }
+    return res;
+}
+
+        
+        function deleteNoteFromDB(noteId) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/delete-note/' + noteId, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+
+            xhr.onload = function () {
+                if (xhr.status === 200) {
+                    var noteElement = document.getElementById("note_" + noteId);
+                    if (noteElement) {
+                        noteElement.remove();
+                    }
+                } else {
+                    console.error("Error deleting note from the database");
+                }
+            };
+
+            xhr.send();
+        }
+    });
+</script>
+
+</body>
+</html>
